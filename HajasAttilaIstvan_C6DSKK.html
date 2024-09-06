@@ -1,0 +1,744 @@
+<!-- Minecraft Stevet valósítottam meg a Minecraft animációs kisfilmekből -->
+<!DOCTYPE html>
+<html lang="hu">
+  <head>
+    <meta charset="utf-8" />
+    <title>Minecraft Steve</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+      canvas {
+        width: 100%;
+        height: 100%;
+      }
+      #controls-container {
+        position: absolute;
+        top: 10rem;
+        right: 10px;
+        transform: translateY(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+      }
+      button {
+        color: #fff;
+        padding: 9px 16px;
+        font-weight: 600;
+        font-size: 18px;
+        border-radius: 20px;
+        background: #3a86ff;
+        display: block !important;
+        margin-bottom: 1rem;
+      }
+      button:hover {
+        background-color: #305fb8;
+      }
+
+      #caption {
+        position: absolute;
+        top: 1rem;
+        left: 10px;
+        text-align: left;
+        z-index: 100;
+        display: block;
+        color: white;
+        font-weight: 700;
+        font-size: 2rem;
+        text-shadow: -3px 3px 1px black, 2px 2px 10px black, 2px -2px 0px black, -2px -2px 10px black;
+        margin-bottom: 2rem;
+      }
+      #info {
+        position: absolute;
+        top: 6rem;
+        left: 10px;
+        text-align: left;
+        z-index: 100;
+        display: block;
+        color: white;
+        opacity: 1;
+        font-weight: 700;
+        font-size: 1.2rem;
+        text-shadow: -3px 3px 1px black, 2px 2px 10px black, 2px -2px 0px black, -2px -2px 10px black;
+      }
+      #info.hidden,
+      #caption.hidden {
+        display: none; /* Rejtett állapot */
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="caption">HajasAttilaIstván_C6DSKK<br />Üzemmérnök_2023/2024 I.</div>
+
+    <div id="info">
+      <p>
+        - A színtér az egér segítségével forgatható!<br />
+        - A "H" betűvel eltüntethetőek a fák!<br />
+        - A "W-A-S-D"-vel állíthatóak fények!<br />
+        - Az "I" betűvel eltüntethető a szöveg!<br />
+      </p>
+    </div>
+    <script async src="./dist/es-module-shims.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./js-r154/build/three.module.js",
+          "TrackballControls": "./js-r154/examples/jsm/controls/TrackballControls.js"
+        }
+      }
+    </script>
+
+    <script type="module">
+      import * as THREE from "./js-r154/build/three.module.js";
+      import { TrackballControls } from "TrackballControls";
+      /* I betűre kiiratás eltüntetése */
+      // Az "I" billentyű lenyomásának eseménykezelése
+      document.addEventListener("keydown", function (event) {
+        if (event.key === "i" || event.key === "I") {
+          // Az info elem elérése
+          const info = document.getElementById("info");
+          const caption = document.getElementById("caption");
+
+          // Az info elem osztályának váltása (toggle)
+          info.classList.toggle("hidden");
+          caption.classList.toggle("hidden");
+        }
+      });
+
+      /*  Különböző megvilágítások csak BUTTON lenyomás interakciókra. START*/
+      const controlsContainer = document.createElement("div");
+      controlsContainer.id = "controls-container";
+      document.body.appendChild(controlsContainer);
+
+      const ambientLightButton = createToggleButton("Ambient Light", "W", toggleAmbientLight);
+      controlsContainer.appendChild(ambientLightButton);
+
+      const sunLightButton = createToggleButton("Sun Light", "A", toggleSunLight);
+      controlsContainer.appendChild(sunLightButton);
+
+      const shadowLightButton = createToggleButton("Shadow Light", "S", toggleShadowLight);
+      controlsContainer.appendChild(shadowLightButton);
+
+      const spotLightButton = createToggleButton("Spot Light", "D", toggleSpotLight);
+      controlsContainer.appendChild(spotLightButton);
+
+      function createToggleButton(label, key, onClick) {
+        const button = document.createElement("button");
+        button.textContent = `${label} (${key.toUpperCase()})`;
+        button.addEventListener("click", onClick);
+        return button;
+      }
+      /*  Különböző megvilágítások csak BUTTON lenyomás interakciókra. END*/
+
+      /*  Különböző megvilágítások csak BILLENTYŰ lenyomás interakciókra. START*/
+      let ambientLightOn = true;
+      let sunLightOn = true;
+      let shadowLightOn = true;
+      let spotLightOn = true;
+
+      function toggleAmbientLight() {
+        ambientLightOn = !ambientLightOn;
+        ambientLight.visible = ambientLightOn;
+      }
+
+      function toggleSunLight() {
+        sunLightOn = !sunLightOn;
+        sunLight.visible = sunLightOn;
+      }
+
+      function toggleShadowLight() {
+        shadowLightOn = !shadowLightOn;
+        shadowLight.visible = shadowLightOn;
+      }
+
+      function toggleSpotLight() {
+        spotLightOn = !spotLightOn;
+        spotLight.visible = spotLightOn;
+      }
+
+      window.addEventListener("keydown", (event) => {
+        switch (event.key.toLowerCase()) {
+          case "w":
+            toggleAmbientLight();
+            break;
+          case "a":
+            toggleSunLight();
+            break;
+          case "s":
+            toggleShadowLight();
+            break;
+          case "d":
+            toggleSpotLight();
+            break;
+        }
+      });
+
+      /*  Különböző megvilágítások csak BILLENTYŰ lenyomás interakciókra. END*/
+
+      // Szükséges Three.js elemek inicializálása
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      // Fák START
+      const trees = [];
+
+      function createTree(x, z) {
+        const trunkGeometry = new THREE.BoxGeometry(1, 4, 1);
+        const trunkTexture = new THREE.TextureLoader().load("tree.jpg");
+        const trunkMaterial = new THREE.MeshPhongMaterial({ map: trunkTexture });
+        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+
+        trunk.position.set(x, -1.5, z);
+
+        const leavesGeometry = new THREE.BoxGeometry(3, 3, 3);
+        const leavesTexture = new THREE.TextureLoader().load("leaves.jpg");
+        const leavesMaterial = new THREE.MeshPhongMaterial({ map: leavesTexture });
+        const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+        leaves.position.set(x, 1.5, z);
+
+        const treeGroup = new THREE.Group();
+        treeGroup.add(trunk);
+        treeGroup.add(leaves);
+
+        const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true });
+        const outline = new THREE.Mesh(leavesGeometry, outlineMaterial);
+        const outline1 = new THREE.Mesh(trunkGeometry, outlineMaterial);
+        outline.position.set(x, 1.5, z);
+        outline.scale.multiplyScalar(1);
+        outline1.position.set(x, -1.5, z);
+        outline1.scale.multiplyScalar(1);
+        treeGroup.add(outline);
+        treeGroup.add(outline1);
+
+        scene.add(treeGroup);
+
+        // Fa pozíciójának és méretének tárolása
+        const treeData = {
+          x,
+          z,
+          radius: 5, // Minimális távolság Stevetől
+          group: treeGroup, // Hozzáadva: a fa csoportja
+        };
+        trees.push(treeData);
+      }
+
+      function generateRandomTrees() {
+        const minTrees = 3;
+        const maxTrees = 20;
+        const numTrees = Math.floor(Math.random() * (maxTrees - minTrees + 1)) + minTrees;
+
+        for (let i = 0; i < numTrees; i++) {
+          let isColliding = true;
+          let randomX, randomZ;
+
+          while (isColliding) {
+            randomX = Math.random() * 75 - 35;
+            randomZ = Math.random() * 30 - 5;
+
+            // Ellenőrizd, hogy nincs-e ütközés a fával és Steve-kel
+            isColliding = false;
+            for (const tree of trees) {
+              const distance = Math.sqrt((randomX - tree.x) ** 2 + (randomZ - tree.z) ** 2);
+              if (distance < tree.radius || distance < 2) {
+                isColliding = true;
+                break;
+              }
+            }
+          }
+
+          createTree(randomX, randomZ);
+        }
+      }
+
+      function setTreesVisibility(visible) {
+        for (const tree of trees) {
+          tree.group.visible = visible;
+        }
+      }
+
+      // Eseménykezelő a H billentyű lenyomására
+      document.addEventListener("keydown", function (event) {
+        if (event.key === "h" || event.key === "H") {
+          setTreesVisibility(false); // Állítsd át a fák láthatóságát false-ra
+        }
+      });
+
+      // Eseménykezelő a H billentyű felengedésére
+      document.addEventListener("keyup", function (event) {
+        if (event.key === "h" || event.key === "H") {
+          setTreesVisibility(true); // Állítsd át a fák láthatóságát true-ra
+        }
+      });
+
+      generateRandomTrees();
+
+      /* Fák END */
+
+      // Háttér létrehozása
+      const skyGeometry = new THREE.SphereGeometry(1000, 0, 0);
+      const skyMaterial = new THREE.MeshBasicMaterial({ color: 0x87ceeb, side: THREE.BackSide });
+      const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+      scene.add(sky);
+      // Minecraft Steve készítése
+      // Fej
+      const headGeometry = new THREE.BoxGeometry(1, 1, 1);
+      const headMaterial = new THREE.MeshPhongMaterial({ color: 0xffcc99 });
+      const head = new THREE.Mesh(headGeometry, headMaterial);
+      head.position.y = 1.5; // Fej pozíciója
+
+      // Körvonal hozzáadása a fejhez
+      const headOutlineMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true });
+      const headOutline = new THREE.Mesh(headGeometry, headOutlineMaterial);
+      headOutline.position.set(0, 0, 0);
+      headOutline.scale.multiplyScalar(1.01);
+      head.add(headOutline); // Körvonal hozzáadása a fejhez
+
+      // Szemek
+      const eyeGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.05); // Kocka geometria
+      const eyeMaterial = new THREE.MeshPhongMaterial({ color: 0x0000ff }); // Kék szemek
+      const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+      const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+      leftEye.position.set(-0.3, 1.7, 0.5);
+      rightEye.position.set(0.3, 1.7, 0.5);
+
+      // Szakáll
+      const beardGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.5); // Kocka geometria
+      const beardMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 }); // Fekete szakáll
+      const beard = new THREE.Mesh(beardGeometry, beardMaterial);
+      beard.position.set(0, 1.2, 0.6); // Szakáll pozíciója
+
+      // Orr
+      const noseGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1); // Kocka geometria
+      const noseMaterial = new THREE.MeshPhongMaterial({ color: 0xf4a142 }); // Orr színe
+      const nose = new THREE.Mesh(noseGeometry, noseMaterial);
+      nose.position.set(0, 1.5, 0.55);
+
+      // Száj
+      const mouthGeometry = new THREE.BoxGeometry(0.2, 0.05, 0.05); // Kocka geometria
+      const mouthMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 }); // Fekete száj
+      const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
+      mouth.position.set(0, 1.35, 0.5);
+
+      // Haj
+      const hairGeometry = new THREE.BoxGeometry(1.05, 0.2, 1.05); // Kocka geometria
+      const hairMaterial = new THREE.MeshPhongMaterial({ color: 0x8b4513 }); // Barna haj
+      const hair = new THREE.Mesh(hairGeometry, hairMaterial);
+      hair.position.set(0, 0.5, 0); // Haj pozíciója
+
+      // Arc csoportba csoportosítása
+      const face = new THREE.Group();
+      face.add(leftEye);
+      face.add(rightEye);
+      face.add(nose);
+      face.add(mouth);
+
+      // Fej pozíciójának beállítása a csoporton belül
+      face.position.set(0, -1.5, 0);
+
+      // Haj hozzáadása a fejhez
+      head.add(hair);
+      // Arc csoport hozzáadása a fejhez
+      head.add(face);
+
+      // Test
+      const bodyGeometry = new THREE.BoxGeometry(1, 2, 0.5);
+      const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x34ebde });
+      const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+
+      // Körvonalak hozzáadása a testhez
+      const bodyOutlineMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true });
+      const bodyOutline = new THREE.Mesh(bodyGeometry, bodyOutlineMaterial);
+      bodyOutline.position.copy(body.position);
+      bodyOutline.scale.multiplyScalar(1.01);
+      body.add(bodyOutline); // Körvonal hozzáadása a testhez
+
+      // Karok
+      // Vállakat jelölő rész létrehozása
+      const shoulderGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5); // Kisebb méret a vállakhoz
+      const shoulderMaterial = new THREE.MeshPhongMaterial({ color: 0x34ebde }); // Kék vállak
+      const leftShoulder = new THREE.Mesh(shoulderGeometry, shoulderMaterial);
+      const rightShoulder = new THREE.Mesh(shoulderGeometry, shoulderMaterial);
+
+      // Körvonalak hozzáadása a vállakhoz
+      const shoulderOutlineMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true });
+      const leftShoulderOutline = new THREE.Mesh(shoulderGeometry, shoulderOutlineMaterial);
+      const rightShoulderOutline = new THREE.Mesh(shoulderGeometry, shoulderOutlineMaterial);
+
+      leftShoulderOutline.position.copy(leftShoulder.position);
+      leftShoulderOutline.scale.multiplyScalar(1.01);
+      leftShoulder.add(leftShoulderOutline); // Körvonal hozzáadása a bal vállhoz
+
+      rightShoulderOutline.position.copy(rightShoulder.position);
+      rightShoulderOutline.scale.multiplyScalar(1.01);
+      rightShoulder.add(rightShoulderOutline); // Körvonal hozzáadása a jobb vállhoz
+
+      // Kezeket jelölő rész létrehozása
+      const handGeometry = new THREE.BoxGeometry(0.5, 1, 0.5); // A kezek hossza maradjon változatlan
+      const skinColor = new THREE.MeshPhongMaterial({ color: 0xffcc99 }); // Bőrszínű kezek
+      const leftHand = new THREE.Mesh(handGeometry, skinColor);
+      const rightHand = new THREE.Mesh(handGeometry, skinColor);
+
+      // Körvonalak hozzáadása a kezekhez
+      const handOutlineMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true });
+      const leftHandOutline = new THREE.Mesh(handGeometry, handOutlineMaterial);
+      const rightHandOutline = new THREE.Mesh(handGeometry, handOutlineMaterial);
+
+      leftHandOutline.position.copy(leftHand.position);
+      leftHandOutline.scale.multiplyScalar(1.01);
+      leftHand.add(leftHandOutline); // Körvonal hozzáadása a bal kézhez
+
+      rightHandOutline.position.copy(rightHand.position);
+      rightHandOutline.scale.multiplyScalar(1.01);
+      rightHand.add(rightHandOutline); // Körvonal hozzáadása a jobb kézhez
+
+      // Pozíciók beállítása
+      leftShoulder.position.set(-0.75, 0.75, 0); // Bal váll pozíciója
+      rightShoulder.position.set(0.75, 0.75, 0); // Jobb váll pozíciója
+
+      leftHand.position.set(-0.75, 0, 0); // Bal kéz pozíciója
+      rightHand.position.set(0.75, 0, 0); // Jobb kéz pozíciója
+
+      // Lábak
+      const legGeometry = new THREE.BoxGeometry(0.6, 2, 0.51);
+      const legMaterial = new THREE.MeshPhongMaterial({ color: 0x00008b });
+      const legMaterialDown = new THREE.MeshPhongMaterial({ color: 0x808080 });
+
+      const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+      const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+
+      leftLeg.position.x = -0.25; // Bal láb pozíciója
+      rightLeg.position.x = 0.25; // Jobb láb pozíciója
+
+      leftLeg.position.y = rightLeg.position.y = -1.5;
+
+      // Körvonal hozzáadása a bal lábhoz
+      const leftLegOutlineGeometry = new THREE.BoxGeometry(0.61, 2.01, 0.52); // Kicsit nagyobb méretű körvonal geometria
+      const leftLegOutlineMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true });
+      const leftLegOutline = new THREE.Mesh(leftLegOutlineGeometry, leftLegOutlineMaterial);
+      leftLegOutline.position.set(0, 0, 0); // Állítsd be a körvonal pozícióját a bal láb pozíciójához képest
+      leftLegOutline.scale.multiplyScalar(1.01);
+      leftLeg.add(leftLegOutline); // Körvonal hozzáadása a bal lábhoz
+
+      // Körvonal hozzáadása a jobb lábhoz
+      const rightLegOutlineGeometry = new THREE.BoxGeometry(0.61, 2.01, 0.52); // Kicsit nagyobb méretű körvonal geometria
+      const rightLegOutline = new THREE.Mesh(rightLegOutlineGeometry, new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true }));
+      rightLegOutline.position.set(0, 0, 0); // Állítsd be a körvonal pozícióját a bal láb pozíciójához képest
+      rightLegOutline.scale.multiplyScalar(1.01);
+      rightLeg.add(rightLegOutline);
+
+      // Szürke csík létrehozása
+      const greyStripeGeometry = new THREE.BoxGeometry(1.11, 0.1, 0.6);
+      const greyStripeMaterial = new THREE.MeshPhongMaterial({ color: 0x808080 });
+      const greyStripe = new THREE.Mesh(greyStripeGeometry, greyStripeMaterial);
+
+      // Körvonal hozzáadása a szürke csíkhoz
+      const greyStripeOutline = new THREE.Mesh(greyStripeGeometry, new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true }));
+      greyStripeOutline.position.copy(greyStripe.position);
+      greyStripeOutline.scale.multiplyScalar(1.01);
+      greyStripe.add(greyStripeOutline);
+
+      // Szürke csík pozíciójának beállítása
+      greyStripe.position.y = -2.5; // Csík pozíciója az aljánál legyen
+
+      // Steve csoportba csoportosítása
+      const steve = new THREE.Group();
+      steve.add(head);
+      steve.add(body);
+      steve.add(leftShoulder);
+      steve.add(rightShoulder);
+      steve.add(leftHand);
+      steve.add(rightHand);
+      steve.add(leftLeg);
+      steve.add(rightLeg);
+      steve.add(greyStripe); // Szürke csík hozzáadása Steve-hez
+
+      // Steve pozíciója
+      steve.position.y = -0.5; // Steve magassága
+      scene.add(steve);
+
+      camera.position.z = 5;
+
+      // Blokkokat létrehozó függvény
+      function createBlocks() {
+        const platform = new THREE.Group();
+
+        const blockSize = new THREE.Vector3(1.5, 1.5, 1.5); // A blokk mérete
+        const numRows = 10; // A sorok száma
+        const numCols = 10; // Az oszlopok száma
+
+        // Textúrák elérési útvonalai
+        const texturePaths = ["dirt.jpg", "sand.jpg", "stone.jpg", "grass.jpg"];
+
+        // Körvonal geometria
+        const blockOutlineGeometry = new THREE.BoxGeometry(blockSize.x, blockSize.y, blockSize.z);
+
+        // Töltse be a textúrákat
+        const textures = texturePaths.map((path) => new THREE.TextureLoader().load(path));
+
+        for (let row = -20; row < 20; row++) {
+          for (let col = -30; col < 30; col++) {
+            // Véletlenszerűen válasszunk egy textúrát a tömbből
+            const texture = textures[Math.floor(Math.random() * textures.length)];
+
+            // Blokk anyaga a textúrával
+            const blockMaterial = new THREE.MeshPhongMaterial({ map: texture });
+
+            // Blokk geometria
+            const blockGeometry = new THREE.BoxGeometry(blockSize.x, blockSize.y, blockSize.z);
+
+            // Blokk létrehozása és pozíciójának beállítása
+            const block = new THREE.Mesh(blockGeometry, blockMaterial);
+            block.position.set(col * blockSize.x, blockSize.y - 3.5, -row * blockSize.z);
+
+            // Blokkhoz körvonal hozzáadása
+            const blockOutlineMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true });
+            // Körvonal létrehozása és pozíciójának beállítása
+            const blockOutline = new THREE.Mesh(blockOutlineGeometry, blockOutlineMaterial);
+            blockOutline.position.copy(block.position);
+            blockOutline.scale.copy(block.scale); // Körvonal méretének beállítása a blokkéval azonosra
+
+            // Blokk hozzáadása a platformhoz
+            platform.add(block);
+            platform.add(blockOutline);
+          }
+        }
+        // Platform pozíciójának beállítása Steve lába alá
+        platform.position.y = -2;
+
+        return platform;
+      }
+
+      // Blokkok platformjának létrehozása
+      const blocksPlatform = createBlocks();
+      // Hozzáadás a színpadhoz
+      scene.add(blocksPlatform);
+
+      /*---------START---MÁSODIK BEADANDÓ---START---------*/
+
+      //Nem sokat tesz ebben az esetben hozzá btw.
+      const ambientLight = new THREE.AmbientLight(0x586357);
+      scene.add(ambientLight);
+
+      // Fényforrás hozzáadása az árnyék létrehozásához
+      const shadowLight = new THREE.DirectionalLight(0xaaaaaa, 1);
+      shadowLight.position.set(10, 10, 10);
+      scene.add(shadowLight);
+
+      // Fákhoz tartozó árnyék hozzáadása
+      trees.forEach((treeData) => {
+        const shadowGeometry = new THREE.PlaneGeometry(5, 5); // Árnyék geometriája (talaj)
+        const shadowMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3 }); // Árnyék anyaga
+        const shadow = new THREE.Mesh(shadowGeometry, shadowMaterial);
+        shadow.rotation.x = -Math.PI / 2; // Elforgatjuk, hogy a talajhoz érjen
+        shadow.position.set(treeData.x, -3.24, treeData.z); // Árnyék pozíciója, minimálisan eltolva a talajtól
+        scene.add(shadow); // Árnyék hozzáadása a jelenethez
+      });
+
+      // Steve árnyékának hozzáadása
+      const steveShadowGeometry = new THREE.PlaneGeometry(1.5, 1.5); // Steve mérete alapján
+      const steveShadowMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3 });
+      const steveShadow = new THREE.Mesh(steveShadowGeometry, steveShadowMaterial);
+      steveShadow.rotation.x = -Math.PI / 2; // Elforgatjuk, hogy a talajhoz érjen
+      steveShadow.position.set(steve.position.x, -3.2, steve.position.z); // Árnyék pozíciója, minimálisan eltolva a talajtól
+      scene.add(steveShadow);
+
+      // Időzítő inicializálása
+      let currentTime = 0;
+      const dayDuration = 60000; // A nap és az éjszaka egy-egy periódusa, ezredmásodpercben
+
+      // Nap körüli mozgás
+      const sun = new THREE.Vector3(0, 0, 0);
+      const sunRadius = 50;
+      const sunSpeed = 0.01; // A nap mozgásának sebessége
+
+      // Fényforrás hozzáadása a nap körül
+      const sunLight = new THREE.PointLight(0xffffff, 1, 1000);
+      scene.add(sunLight);
+
+      // Nappal és éjszaka állapot követése
+      let isDay = true;
+
+      // Fényerő beállítása
+      function setLightIntensity(isDay) {
+        if (isDay) {
+          // Nappal: erős fény
+          sunLight.intensity = 1;
+          sky.material.color.setHex(0x87ceeb); // Világoskék háttér
+        } else {
+          // Éjszaka: halványabb fény
+          sunLight.intensity = 0.2;
+          sky.material.color.setHex(0x000000); // Fekete háttér
+        }
+      }
+
+      const shadowLightHelperGeometry = new THREE.ArrowHelper(shadowLight.position, new THREE.Vector3(0, 0, 0), 1, 0x00ff00); // Nyilat hoz létre
+      scene.add(shadowLightHelperGeometry);
+
+      const pointLightHelperGeometry = new THREE.SphereGeometry(0.1, 32, 32); // Gömb geometria
+      const pointLightHelperMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Piros szín
+      const pointLightHelper = new THREE.Mesh(pointLightHelperGeometry, pointLightHelperMaterial);
+
+      pointLightHelper.position.copy(sunLight.position); // Pozíció beállítása a fényforrás pozíciójára
+      scene.add(pointLightHelper);
+
+      /*---------END---MÁSODIK BEADANDÓ---END---------*/
+
+      // Felhők létrehozása és pozíciójának beállítása véletlenszerűen
+      const numClouds = Math.floor(Math.random() * 8) + 5; // Véletlenszerű szám 3 és 10 között
+
+      const clouds = [];
+
+      for (let i = 0; i < numClouds; i++) {
+        const cloud = createCloud();
+        scene.add(cloud);
+        clouds.push(cloud);
+      }
+
+      function createCloud() {
+        const cloudGeometryTop = new THREE.SphereGeometry(1, 32, 32);
+        const cloudMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 });
+
+        const cloudTop = new THREE.Mesh(cloudGeometryTop, cloudMaterial);
+        cloudTop.scale.set(0.5, 0.2, 1);
+
+        const cloudGeometryBottom = new THREE.SphereGeometry(1, 32, 32);
+        const cloudBottom = new THREE.Mesh(cloudGeometryBottom, cloudMaterial);
+        cloudBottom.scale.set(0.6, 0.3, 1);
+
+        // Pozíciók beállítása
+        const randomX = Math.random() * 10 - 5;
+        const randomY = Math.random() * 2 + 1;
+        const randomZ = Math.random() * 10 - 5;
+
+        cloudTop.position.set(randomX, randomY, randomZ);
+        cloudBottom.position.set(randomX + 0.2, randomY - 0.2, randomZ);
+
+        // Körvonal geometria
+        const cloudOutlineGeometryTop = new THREE.RingGeometry(0.8, 0.8, 64); // Köralakú körvonal geometria
+        const cloudOutlineGeometryBottom = new THREE.RingGeometry(0.8, 0.8, 64);
+
+        // Körvonal anyaga
+        const cloudOutlineMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true });
+
+        // Körvonal létrehozása és pozíciójának beállítása
+        const cloudOutlineTop = new THREE.Mesh(cloudOutlineGeometryTop, cloudOutlineMaterial);
+        cloudOutlineTop.position.copy(cloudTop.position);
+        cloudOutlineTop.rotation.x = -Math.PI / 2;
+
+        const cloudOutlineBottom = new THREE.Mesh(cloudOutlineGeometryBottom, cloudOutlineMaterial);
+        cloudOutlineBottom.position.copy(cloudBottom.position);
+        cloudOutlineBottom.rotation.x = -Math.PI / 2;
+
+        // Cloud csoportba csoportosítása
+        const cloud = new THREE.Group();
+        cloud.add(cloudTop);
+        cloud.add(cloudBottom);
+        cloud.add(cloudOutlineTop);
+        cloud.add(cloudOutlineBottom);
+
+        return cloud;
+      }
+
+      // Bot
+      const stickGeometry = new THREE.BoxGeometry(0.1, 1, 0.1);
+      const stickMaterial = new THREE.MeshPhongMaterial({ color: 0xa86c47 });
+      const stick = new THREE.Mesh(stickGeometry, stickMaterial);
+      stick.position.set(0.75, 0, 0.4); // Bot pozíciója Steve-hez képest
+      // Bot elforgatása, hogy felfelé nézzen
+      stick.rotation.x = Math.PI / 4.5;
+      // Bot hozzáadása Steve-hez
+      steve.add(stick);
+
+      // Fényforrás hozzáadása a bot-hoz
+      const pointLight = new THREE.PointLight(0xde613c, 10, 10);
+      pointLight.position.set(0, 0.5, 0); // Fényforrás pozíciója a bot fejéhez képest
+      stick.add(pointLight);
+
+      // Fákja
+      const torchGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+      const torchMaterial = new THREE.MeshPhongMaterial({ color: 0xfbff00 });
+      const torchHead = new THREE.Mesh(torchGeometry, torchMaterial);
+      torchHead.position.set(0, 0.5, 0); // Fákja fejének pozíciója Steve-hez képest
+      // Fákja fejének elforgatása
+      torchHead.rotation.x = Math.PI / 4.5;
+      // Fákja hozzáadása a bot-hoz
+      stick.add(torchHead);
+
+      // TrackballControls inicializálása
+      const controls = new TrackballControls(camera, renderer.domElement);
+
+      // Sárga gömb (követi a nap mozgását)
+      const yellowSphereGeometry = new THREE.SphereGeometry(1, 256, 256);
+      const yellowSphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 }); // Sárga színű gömb
+      const yellowSphere = new THREE.Mesh(yellowSphereGeometry, yellowSphereMaterial);
+      scene.add(yellowSphere);
+
+      // Fényforrás pozíciójának beállítása a nap kezdeti pozíciójára
+      yellowSphere.position.copy(sun);
+
+      // Reflektorfény hozzáadása
+      const spotLight = new THREE.SpotLight(0xde613c, 0.1); // Fehér színű reflektorfény
+      spotLight.position.set(0, 0.1, 0);
+
+      // A reflektorfény iránya (ahol világít)
+      spotLight.target.position.set(steve.position.x, steve.position.y, steve.position.z); // Steve pozíciójára irányítjuk a fényt
+
+      const spotLightHelperGeometry = new THREE.SphereGeometry(0.1, 1, 1);
+      const spotLightHelperMaterial = new THREE.MeshBasicMaterial({ color: 0xde613c });
+      const spotLightHelper = new THREE.Mesh(spotLightHelperGeometry, spotLightHelperMaterial);
+
+      spotLightHelper.position.copy(spotLight.position); // Pozíció beállítása a reflektorfény pozíciójára
+
+      scene.add(spotLight);
+      scene.add(spotLight.target);
+      scene.add(spotLightHelper);
+
+      const animate = () => {
+        requestAnimationFrame(animate);
+        controls.update(); // Ez a sor hozzáadásra került
+        // Felhők mozgatása a kamera körül
+        const speed = 0.00002; // Mozgás sebessége
+        const radius = 50; // Mozgás kör sugara
+
+        clouds.forEach((cloud, index) => {
+          const angle = (index / numClouds) * 2 * Math.PI;
+          const timeOffset = (numClouds - index) * 1000; // Különböző időzítésű mozgás
+
+          cloud.position.x = radius * Math.cos(speed * (Date.now() + timeOffset) + angle);
+          cloud.position.z = -5 + radius * Math.sin(speed * (Date.now() + timeOffset) + angle);
+        });
+
+        // Időzítő növelése
+        currentTime += 1;
+
+        // Ellenőrizzük, hogy nappal vagy éjszaka van
+        isDay = Math.floor(currentTime / dayDuration) % 2 === 0;
+
+        // Fényerő beállítása
+        setLightIntensity(isDay);
+
+        // Nap mozgása
+        if (isDay) {
+          const angle = sunSpeed * currentTime;
+          sun.x = sunRadius * Math.cos(angle);
+          sun.y = sunRadius * Math.sin(angle);
+          sun.z = -10;
+          sunLight.position.copy(sun);
+
+          // A sárga gömb pozíciójának frissítése a nap mozgásával
+          yellowSphere.position.copy(sun);
+        }
+
+        renderer.render(scene, camera);
+      };
+
+      animate(); // Hívjuk meg az animate függvényt a végtelen ciklus indításához
+    </script>
+  </body>
+</html>
